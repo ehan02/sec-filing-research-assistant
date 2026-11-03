@@ -1,0 +1,32 @@
+# Agent framework
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langgraph>=0.2.0
+
+# LLM providers
+langchain-ollama>=0.3.0
+langchain-anthropic>=0.3.0
+
+# Retrieval
+chromadb>=0.5.0
+sentence-transformers>=3.0.0   # embeddings + cross-encoder re-ranker
+rank-bm25>=0.2.2
+
+# EDGAR download and parsing
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+pypdf>=4.0.0                   # fallback for IR PDFs
+
+# Data
+pandas>=2.0.0
+pyarrow>=15.0.0                # features.parquet
+
+# Utilities
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+tabulate>=0.9.0
+
+# Testing
+pytest>=8.0.0
