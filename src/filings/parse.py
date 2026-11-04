@@ -25,6 +25,7 @@ _BLOCK_TAGS = ["p", "div", "table", "li", "h1", "h2", "h3", "h4", "h5", "h6"]
 _HEADING = re.compile(r"^\s*(?:item\s+(\d{1,2}[a-c]?)\s*[.:\s]|part\s+([iv]+)\b)", re.IGNORECASE)
 _EXHIBIT = re.compile(r"ex-?99[._-]?(\d*)", re.IGNORECASE)
 _MAX_HEADING_CHARS = 200
+_EMPHASIS_STYLE = re.compile(r"font-weight:\s*(?:bold|[6-9]00)|font-style:\s*italic", re.IGNORECASE)
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
@@ -91,8 +92,21 @@ def _blocks(soup: BeautifulSoup) -> list[dict]:
         elif not el.find(_BLOCK_TAGS):
             text = el.get_text(" ", strip=True)
             if text:
-                blocks.append({"text": text, "is_table": False})
+                blocks.append({"text": text, "is_table": False, "emphasized": _emphasized(el)})
     return blocks
+
+
+def _emphasized(el: Tag) -> bool:
+    """Every word of ``el`` is bold or italic, by tag or inline style (risk-factor headings are)."""
+    def styled(text) -> bool:
+        for parent in text.parents:
+            if parent.name in ("b", "strong", "i", "em") or _EMPHASIS_STYLE.search(parent.get("style") or ""):
+                return True
+            if parent is el:
+                return False
+        return False
+    texts = [t for t in el.find_all(string=True) if t.strip()]
+    return bool(texts) and all(styled(t) for t in texts)
 
 
 def _rows(table: Tag) -> list[list[str]]:

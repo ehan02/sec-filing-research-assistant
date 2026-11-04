@@ -72,3 +72,6 @@ The fixed list of Companies the assistant has downloaded and indexed.
 **Section Diff**:
 A comparison of the same Section across two Filings of the same form: a similarity score plus added, removed and reworded paragraphs.
 _Avoid_: Redline, change report
+
+**Risk Factor**:
+One risk a 10-K's Item 1A lists, counted by its heading: an emphasized (bold or italic) paragraph that is a sentence. Bold category headings without a period, like "Macroeconomic and Industry Risks", group Risk Factors and are not counted.

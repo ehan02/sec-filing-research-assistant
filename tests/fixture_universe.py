@@ -113,7 +113,8 @@ _TOC = """
 
 
 def _ten_k(year: int, risks: list[str], revenue: int, prior_revenue: int) -> bytes:
-    risk_html = "\n".join(f"<p>{r}</p>" for r in risks)
+    # Risk-factor headings are bold sentences; a bold category heading without a period isn't one.
+    risk_html = "<p><b>Business Risks</b></p>\n" + "\n".join(f"<p><b>{r}</b></p>" for r in risks)
     return f"""<html><body>
 <p>UNITED STATES SECURITIES AND EXCHANGE COMMISSION</p>
 <p>FORM 10-K</p>
