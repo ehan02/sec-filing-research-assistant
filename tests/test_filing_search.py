@@ -12,10 +12,8 @@ from tests import fixture_universe as fu
 
 
 @pytest.fixture
-def db(universe, tmp_path):
-    path = tmp_path / "chunks.db"
-    index.index_company(universe.downloader, fu.TICKER, path)
-    return path
+def db(chunks_db):
+    return chunks_db
 
 
 def _search(universe, db, query, **kw):

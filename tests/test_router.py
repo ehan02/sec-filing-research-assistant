@@ -12,7 +12,6 @@ from src.agents import nodes
 from src.agents.agent import ask
 from src.filings.availability import EASTERN, normalize_as_of
 from src.filings.xbrl import load_facts
-from src.rag import index
 from src.rag.answer import ABSTAIN
 from tests import fixture_universe as fu
 from tests.fakes import ScriptedChat
@@ -24,9 +23,8 @@ RISK_PLAN = {"tickers": ["FIXT"], "query": "export restrictions risk", "form": "
 
 
 @pytest.fixture
-def env(universe, tmp_path, monkeypatch):
-    chunks_db, facts_db = tmp_path / "chunks.db", tmp_path / "facts.db"
-    index.index_company(universe.downloader, fu.TICKER, chunks_db)
+def env(universe, chunks_db, tmp_path, monkeypatch):
+    facts_db = tmp_path / "facts.db"
     load_facts(universe.downloader, fu.TICKER, facts_db)
     calls = []
     for name in ("filing_search", "get_financials", "section_diff"):

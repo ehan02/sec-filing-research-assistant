@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from src.rag import index
 from src.rag.answer import ABSTAIN, MAX_ATTEMPTS, answer_question
 from tests import fixture_universe as fu
 from tests.fakes import ScriptedChat
@@ -14,10 +13,8 @@ QUESTION = "What export risks does Fixture Corp face?"
 
 
 @pytest.fixture
-def db(universe, tmp_path):
-    path = tmp_path / "chunks.db"
-    index.index_company(universe.downloader, fu.TICKER, path)
-    return path
+def db(chunks_db):
+    return chunks_db
 
 
 def _ask(universe, db, chat, **kw):
