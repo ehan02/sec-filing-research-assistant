@@ -6,9 +6,10 @@ import json
 from datetime import date
 
 import pytest
-import requests
 
 from src.filings.edgar import EdgarClient, EdgarDownloader, main
+from tests.fakes import FakeEdgar, make_downloader
+from tests.fakes import response as _response
 
 CIK = 320193
 ACC_10K = "0000320193-24-000123"
@@ -57,35 +58,6 @@ INDEX_8K = {"directory": {"item": [
 ]}}
 
 
-def _response(url: str, status: int = 200, payload: object = None,
-              content: bytes | None = None) -> requests.Response:
-    resp = requests.Response()
-    resp.status_code = status
-    resp.url = url
-    resp._content = content if content is not None else json.dumps(payload).encode()
-    return resp
-
-
-class FakeEdgar:
-    """Routes URLs to canned responses and records every request."""
-
-    def __init__(self, routes: dict[str, object]) -> None:
-        self.routes = routes
-        self.calls: list[str] = []
-
-    def __call__(self, url: str) -> requests.Response:
-        self.calls.append(url)
-        for suffix, payload in self.routes.items():
-            if url.endswith(suffix):
-                if isinstance(payload, int):
-                    resp = _response(url, status=payload, content=b"")
-                    raise requests.HTTPError(response=resp)
-                if isinstance(payload, bytes):
-                    return _response(url, content=payload)
-                return _response(url, payload=payload)
-        raise requests.HTTPError(f"404 for {url}", response=_response(url, status=404, content=b""))
-
-
 DEFAULT_ROUTES: dict[str, object] = {
     "company_tickers.json": TICKERS,
     "submissions/CIK0000320193.json": SUBMISSIONS,
@@ -107,9 +79,7 @@ def fake() -> FakeEdgar:
 
 @pytest.fixture
 def downloader(tmp_path, fake, monkeypatch) -> EdgarDownloader:
-    client = EdgarClient(user_agent="Test Runner test@example.com", min_interval=0)
-    monkeypatch.setattr(client, "get", fake)
-    return EdgarDownloader(client, data_dir=tmp_path)
+    return make_downloader(tmp_path, fake, monkeypatch)
 
 
 # -- client ---------------------------------------------------------------

@@ -172,6 +172,6 @@ For each Company × Original 10-K, compares Item 1A and Item 7 with the prior Or
 ## Further Notes
 
 - The README says "Nothing is implemented yet", but the EDGAR downloader and its tests exist. The README also still shows `item` (not `section`), `fy`/`fp` and `filed` in its schemas and lists `section_diff` without As-of. It should be updated to match this spec and `GLOSSARY.md`.
-- The submissions API's `acceptanceDateTime` is labeled UTC (`…Z`), but is widely reported to be US Eastern time with a misleading suffix. Verify this against a known after-hours 8-K before trusting the conversion in ADR-0001.
+- The submissions API's `acceptanceDateTime` (`…Z`) was checked against EDGAR index pages for two after-hours AAPL 8-Ks, one in standard time and one in daylight time. The `Z` is genuine UTC; details are in ADR-0001.
 - Deriving Fiscal Year from period dates needs each Company's fiscal year end. The submissions API provides `fiscalYearEnd`; 52/53-week fiscal years (e.g. AAPL) need a tolerance of a few days.
 - Grilling was cut short after round 1. Branches not yet visited include the eval set construction details, the exact regenerate-retry count, and how Universe-wide questions are fanned out by the router.

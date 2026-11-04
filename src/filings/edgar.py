@@ -3,9 +3,12 @@
 Ticker->CIK map, filing list from the submissions API, and a rate-limited,
 cached download of raw filings into data/filings/{cik}/{accession}/.
 
+Asking for a form also selects its Amendments (10-K selects 10-K/A); each
+Amendment is saved as its own Filing.
+
 Each filing folder holds the primary document, any 8-K Exhibit 99 files, and
 a metadata.json with the fields later stages need for point-in-time
-filtering and citations (accession number, filing date, acceptance time).
+filtering and citations (accession number, Availability Time, amendment flag).
 metadata.json is written last, so a folder without it is re-downloaded.
 
 Usage
@@ -28,7 +31,9 @@ from typing import Any, Iterable
 
 import requests
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
+
+from src.filings.availability import parse_acceptance
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data"
@@ -115,6 +120,17 @@ class FilingRecord(BaseModel):
     primary_doc_description: str | None = None
     is_xbrl: bool = False
 
+    @computed_field
+    @property
+    def is_amendment(self) -> bool:
+        return self.form.upper().endswith("/A")
+
+    @computed_field
+    @property
+    def availability_time(self) -> datetime | None:
+        """When the Filing became public: acceptance datetime in US Eastern (ADR-0001)."""
+        return parse_acceptance(self.acceptance_datetime)
+
     @property
     def accession_nodash(self) -> str:
         return self.accession_no.replace("-", "")
@@ -186,46 +202,69 @@ class EdgarDownloader:
                      since: date | None = None, refresh: bool = False) -> list[FilingRecord]:
         """List a company's filings of the given forms filed on or after ``since``.
 
-        The submissions API returns the most recent ~1000 filings inline and
-        older ones in extra files; those are fetched only when ``since``
-        reaches back into their date range.
+        Each form also selects its Amendments (``10-K`` selects ``10-K/A``).
         """
         cik, title = self.lookup(ticker)
-        forms = {f.upper() for f in forms}
+        wanted = _with_amendments(forms)
+        sub, rows = self._submission_rows(cik, since, refresh)
+
+        company = sub.get("name") or title
+        records: dict[str, FilingRecord] = {}
+        for row in rows:
+            if row["form"].upper() not in wanted or not row.get("primaryDocument"):
+                continue
+            filed = date.fromisoformat(row["filingDate"])
+            if since is not None and filed < since:
+                continue
+            records[row["accessionNumber"]] = FilingRecord(
+                cik=cik,
+                ticker=ticker.upper(),
+                company=company,
+                form=row["form"],
+                accession_no=row["accessionNumber"],
+                filing_date=filed,
+                report_date=_parse_date(row.get("reportDate")),
+                acceptance_datetime=row.get("acceptanceDateTime") or None,
+                primary_document=row["primaryDocument"],
+                primary_doc_description=row.get("primaryDocDescription") or None,
+                is_xbrl=bool(row.get("isXBRL")),
+            )
+        return sorted(records.values(), key=lambda r: r.filing_date)
+
+    def availability_times(self, ticker: str, refresh: bool = False) -> dict[str, datetime]:
+        """Map every accession number the Company ever filed to its Availability Time.
+
+        Covers all forms and the full submissions history, because XBRL Facts
+        can be reported by any Filing (ADR-0001). Filings with no acceptance
+        time are left out.
+        """
+        cik, _ = self.lookup(ticker)
+        _, rows = self._submission_rows(cik, since=None, refresh=refresh)
+        times: dict[str, datetime] = {}
+        for row in rows:
+            when = parse_acceptance(row.get("acceptanceDateTime"))
+            if when is not None:
+                times[row["accessionNumber"]] = when
+        return times
+
+    def _submission_rows(self, cik: int, since: date | None,
+                         refresh: bool) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        """The Company's submissions JSON plus its filing rows on or after ``since``.
+
+        The submissions API returns the most recent ~1000 filings inline and
+        older ones in extra files; those are fetched only when ``since``
+        reaches back into their date range (always, when ``since`` is None).
+        """
         sub_dir = self.cache_dir / "submissions"
         name = f"CIK{cik:010d}.json"
         sub = self._cached_json(SUBMISSIONS_URL.format(name=name), sub_dir / name,
                                 max_age=SUBMISSIONS_MAX_AGE, refresh=refresh)
-
         blocks = [sub["filings"]["recent"]]
         for extra in sub["filings"].get("files", []):
             if since is None or date.fromisoformat(extra["filingTo"]) >= since:
                 blocks.append(self._cached_json(SUBMISSIONS_URL.format(name=extra["name"]),
                                                 sub_dir / extra["name"]))
-
-        company = sub.get("name") or title
-        records: dict[str, FilingRecord] = {}
-        for block in blocks:
-            for row in _columns_to_rows(block):
-                if row["form"].upper() not in forms or not row.get("primaryDocument"):
-                    continue
-                filed = date.fromisoformat(row["filingDate"])
-                if since is not None and filed < since:
-                    continue
-                records[row["accessionNumber"]] = FilingRecord(
-                    cik=cik,
-                    ticker=ticker.upper(),
-                    company=company,
-                    form=row["form"],
-                    accession_no=row["accessionNumber"],
-                    filing_date=filed,
-                    report_date=_parse_date(row.get("reportDate")),
-                    acceptance_datetime=row.get("acceptanceDateTime") or None,
-                    primary_document=row["primaryDocument"],
-                    primary_doc_description=row.get("primaryDocDescription") or None,
-                    is_xbrl=bool(row.get("isXBRL")),
-                )
-        return sorted(records.values(), key=lambda r: r.filing_date)
+        return sub, [row for block in blocks for row in _columns_to_rows(block)]
 
     # -- documents ---------------------------------------------------------
 
@@ -333,6 +372,12 @@ def _columns_to_rows(block: dict[str, list]) -> list[dict[str, Any]]:
     return [dict(zip(keys, values)) for values in zip(*(block[k] for k in keys))]
 
 
+def _with_amendments(forms: Iterable[str]) -> set[str]:
+    """Upper-cased forms plus each one's Amendment form (10-K -> 10-K/A)."""
+    wanted = {f.upper() for f in forms}
+    return wanted | {f"{f}/A" for f in wanted if not f.endswith("/A")}
+
+
 def _parse_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value else None
 
@@ -345,7 +390,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Download SEC filings from EDGAR.")
     parser.add_argument("tickers", nargs="+", help="Tickers, e.g. AAPL MSFT")
     parser.add_argument("--forms", nargs="+", default=list(DEFAULT_FORMS),
-                        help="Form types (default: 10-K 10-Q 8-K)")
+                        help="Form types; each includes its /A amendments "
+                             "(default: 10-K 10-Q 8-K)")
     window = parser.add_mutually_exclusive_group()
     window.add_argument("--since", type=date.fromisoformat,
                         help="Earliest filing date, YYYY-MM-DD")
