@@ -28,3 +28,8 @@
   - Revenue and net income FY2024–FY2025 as of 2025-06-30: FY2024 revenue $391,035M and net income $93,736M, cited to the FY2024 10-K, on the 1st attempt, 37 s. FY2025 wasn't public yet; the model didn't estimate it but ended with the Abstention sentence instead of saying "unavailable".
   - Net margin FY2025 Q1: 29.2%, correct, citing both inputs (inside a "[derived from …]" wrapper the citation regex still accepts), 1st attempt, 60 s.
   - The post-check can't catch an omitted value or an Abstention sentence tacked onto a real answer; completeness is for ticket 13's answer-quality eval. Claude is still untested (`ANTHROPIC_API_KEY` is empty).
+
+**Stricter post-check (2026-11-04, `14ea422`).** The answer must now contain every requested ratio and say "unavailable" for each missing Fact, and an Abstention sentence tacked onto a real answer is dropped. Re-run of the same three `llama3.2` questions:
+- Revenue and gross margin FY2020–FY2024: abstained after 3 attempts, 542 s. It still left out the margins, and now it's rejected instead of accepted as a partial answer.
+- Revenue and net income FY2024–FY2025 as of 2025-06-30: passed on the 2nd attempt, 111 s. It gave the FY2024 values and now calls both FY2025 values "unavailable".
+- Net margin FY2025 Q1: 29.2%, 1st attempt, 35 s.
