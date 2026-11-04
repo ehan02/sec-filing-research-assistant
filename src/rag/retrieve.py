@@ -39,12 +39,27 @@ def reranker(model: str = RERANK_MODEL) -> CrossEncoder:
 
 def search(db_path: Path, query: str, as_of: datetime, cik: int | None = None,
            form: str | None = None, fiscal_year: int | None = None,
-           section: str | None = None, k: int = TOP_K) -> list[dict]:
-    """Top ``k`` Chunks for ``query`` among those available at ``as_of``."""
-    filters = {"cik": cik, "form": form, "fiscal_year": fiscal_year, "section": section}
-    where = ["availability_time <= ?"] + [f"{col} = ?" for col, v in filters.items() if v is not None]
-    params = [as_of.astimezone(timezone.utc).isoformat()] + [v for v in filters.values() if v is not None]
+           section: str | None = None, accession_no: str | None = None,
+           latest: bool = False, k: int = TOP_K) -> list[dict]:
+    """Top ``k`` Chunks for ``query`` among those available at ``as_of``.
+
+    ``form`` matches exactly, so ``10-K`` never returns a ``10-K/A``. With
+    ``latest``, only the Company's most recent Filing of ``form`` available at
+    ``as_of`` is searched — the latest Original unless ``form`` is an Amendment.
+    """
+    as_of_utc = as_of.astimezone(timezone.utc).isoformat()
     with connect(db_path) as conn:
+        if latest:
+            row = conn.execute("SELECT accession_no FROM chunks WHERE cik = ? AND form = ?"
+                               " AND availability_time <= ? ORDER BY availability_time DESC LIMIT 1",
+                               (cik, form, as_of_utc)).fetchone()
+            if row is None:
+                return []
+            accession_no = row["accession_no"]
+        filters = {"cik": cik, "form": form, "fiscal_year": fiscal_year, "section": section,
+                   "accession_no": accession_no}
+        where = ["availability_time <= ?"] + [f"{col} = ?" for col, v in filters.items() if v is not None]
+        params = [as_of_utc] + [v for v in filters.values() if v is not None]
         rows = [dict(r) for r in conn.execute(f"SELECT * FROM chunks WHERE {' AND '.join(where)}", params)]
     if not rows:
         return []

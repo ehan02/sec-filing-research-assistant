@@ -1,8 +1,14 @@
 """Split filing HTML into Sections and convert tables to markdown.
 
-A 10-K is split into the Sections ``Item 1``, ``1A``, ``7``, ``7A``, ``8`` and
-``9A``. Headings are found only outside data tables, so the table of contents
-(a multi-column table) never starts a Section; if an Item heading still occurs
+Sections are form-aware:
+
+- an Original 10-K keeps ``Item 1``, ``1A``, ``7``, ``7A``, ``8`` and ``9A``;
+- a 10-Q keeps every Item, qualified by its Part (``Part II Item 1A``);
+- an Amendment keeps every Item it contains, since it only holds what it amends;
+- an 8-K exhibit is one Section named after it (``Ex-99.1``).
+
+Headings are found only outside data tables, so the table of contents (a
+multi-column table) never starts a Section; if an Item heading still occurs
 more than once, the occurrence with the most content wins.
 """
 
@@ -16,32 +22,50 @@ from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 TEN_K_SECTIONS = ("Item 1", "Item 1A", "Item 7", "Item 7A", "Item 8", "Item 9A")
 
 _BLOCK_TAGS = ["p", "div", "table", "li", "h1", "h2", "h3", "h4", "h5", "h6"]
-_HEADING = re.compile(r"^\s*(?:item\s+(\d{1,2}[a-c]?)\s*[.:\s]|part\s+[iv]+\b)", re.IGNORECASE)
+_HEADING = re.compile(r"^\s*(?:item\s+(\d{1,2}[a-c]?)\s*[.:\s]|part\s+([iv]+)\b)", re.IGNORECASE)
+_EXHIBIT = re.compile(r"ex-?99[._-]?(\d*)", re.IGNORECASE)
 _MAX_HEADING_CHARS = 200
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
-def parse_10k(html: bytes) -> list[dict]:
-    """Sections of a 10-K in document order.
+def parse_sections(html: bytes, form: str) -> list[dict]:
+    """Sections of a 10-K or 10-Q (or their Amendments) in document order.
 
     Each Section is ``{"section": "Item 1A", "blocks": [{"text", "is_table"}]}``;
     a table block is markdown with its caption on the first line.
     """
+    with_part = form.upper().startswith("10-Q")
     segments: list[tuple[str | None, list[dict]]] = []
+    part = None
     for block in _blocks(BeautifulSoup(html, "lxml")):
         match = None if block["is_table"] else _HEADING.match(block["text"])
         if match and len(block["text"]) <= _MAX_HEADING_CHARS:
-            item = f"Item {match.group(1).upper()}" if match.group(1) else None
-            segments.append((item, []))
+            item, roman = match.groups()
+            if roman:
+                part = roman.upper()
+                segments.append((None, []))
+            else:
+                name = f"Item {item.upper()}"
+                segments.append((f"Part {part} {name}" if with_part else name, []))
         elif segments:
             segments[-1][1].append(block)
 
-    best: dict[str, list[dict]] = {}
-    for item, blocks in segments:
-        if item in TEN_K_SECTIONS and _size(blocks) > _size(best.get(item, [])):
-            best[item] = blocks
-    return [{"section": s, "blocks": best[s]} for s in TEN_K_SECTIONS if s in best]
+    keep_all = with_part or form.upper().endswith("/A")
+    best: dict[str, tuple[int, list[dict]]] = {}
+    for position, (section, blocks) in enumerate(segments):
+        if section and (keep_all or section in TEN_K_SECTIONS) and blocks \
+                and _size(blocks) > _size(best.get(section, (0, []))[1]):
+            best[section] = (position, blocks)
+    return [{"section": s, "blocks": blocks}
+            for s, (_, blocks) in sorted(best.items(), key=lambda kv: kv[1][0])]
+
+
+def parse_exhibit(html: bytes, filename: str) -> dict:
+    """An 8-K exhibit as one Section named after it, e.g. ``Ex-99.1``."""
+    number = _EXHIBIT.search(filename).group(1)
+    name = f"Ex-99.{number}" if number else "Ex-99"
+    return {"section": name, "blocks": _blocks(BeautifulSoup(html, "lxml"))}
 
 
 def _blocks(soup: BeautifulSoup) -> list[dict]:

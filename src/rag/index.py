@@ -22,8 +22,8 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 from src.filings.edgar import ROOT, EdgarDownloader, _emit
-from src.filings.parse import parse_10k
-from src.filings.xbrl import fiscal_year
+from src.filings.parse import parse_exhibit, parse_sections
+from src.filings.xbrl import fiscal_period, fiscal_year
 
 CHUNKS_DB = Path(os.getenv("CHUNKS_DB", ROOT / "data" / "chunks.db"))
 EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-base-en-v1.5")
@@ -90,7 +90,8 @@ def chunk_section(blocks: list[dict]) -> list[dict]:
 
 
 def index_company(downloader: EdgarDownloader, ticker: str, db_path: Path = CHUNKS_DB) -> dict[str, int]:
-    """(Re)index every saved Original 10-K of a Company. Returns Chunk counts per accession."""
+    """(Re)index every saved 10-K, 10-Q and 8-K exhibit of a Company, Amendments
+    included, each as its own Filing. Returns Chunk counts per accession."""
     cik, _ = downloader.lookup(ticker)
     sub_path = downloader.cache_dir / "submissions" / f"CIK{cik:010d}.json"
     fye = json.loads(sub_path.read_text(encoding="utf-8"))["fiscalYearEnd"]
@@ -98,11 +99,24 @@ def index_company(downloader: EdgarDownloader, ticker: str, db_path: Path = CHUN
     counts: dict[str, int] = {}
     for meta_path in sorted((downloader.filings_dir / str(cik)).glob("*/metadata.json")):
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        if meta["form"] != "10-K":
+        form, folder = meta["form"].upper(), meta_path.parent
+        base_url = meta["url"].rsplit("/", 1)[0]
+        if form.startswith("8-K"):
+            # The 8-K body only points at its exhibits; the exhibits hold the content.
+            sections = [parse_exhibit((folder / name).read_bytes(), name) | {"url": f"{base_url}/{name}"}
+                        for name in meta["files"][1:]]
+        elif form.startswith(("10-K", "10-Q")):
+            sections = [s | {"url": meta["url"]} for s in
+                        parse_sections((folder / meta["primary_document"]).read_bytes(), form)]
+            if not sections:
+                _emit(f"  ! {meta['accession_no']}: no Sections found, not indexed")
+        else:
             continue
-        sections = parse_10k((meta_path.parent / meta["primary_document"]).read_bytes())
-        if not sections:
-            _emit(f"  ! {meta['accession_no']}: no Sections found, not indexed")
+
+        report_date = date.fromisoformat(meta["report_date"])
+        fy = fiscal_year(report_date, fye)
+        fp = "FY" if form.startswith("10-K") else \
+            fiscal_period(None, report_date, fy, fye) if form.startswith("10-Q") else None
         rows = []
         for section in sections:
             for idx, chunk in enumerate(chunk_section(section["blocks"])):
@@ -113,8 +127,8 @@ def index_company(downloader: EdgarDownloader, ticker: str, db_path: Path = CHUN
                     "company": meta["company"],
                     "form": meta["form"],
                     "is_amendment": meta["is_amendment"],
-                    "fiscal_year": fiscal_year(date.fromisoformat(meta["report_date"]), fye),
-                    "fiscal_period": "FY",
+                    "fiscal_year": fy,
+                    "fiscal_period": fp,
                     "report_date": meta["report_date"],
                     "availability_time": datetime.fromisoformat(meta["availability_time"])
                                                  .astimezone(timezone.utc).isoformat(),
@@ -122,7 +136,7 @@ def index_company(downloader: EdgarDownloader, ticker: str, db_path: Path = CHUN
                     "section": section["section"],
                     "chunk_idx": idx,
                     "is_table": chunk["is_table"],
-                    "url": meta["url"],
+                    "url": section["url"],
                     "text": chunk["text"],
                 })
         with connect(db_path) as conn:
