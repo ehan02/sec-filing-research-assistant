@@ -9,6 +9,9 @@ The skills speak in terms of five canonical triage roles. This file maps those r
 | `ready-for-agent`          | `ready-for-agent`    | Fully specified, ready for an AFK agent  |
 | `ready-for-human`          | `ready-for-human`    | Requires human implementation            |
 | `wontfix`                  | `wontfix`            | Will not be actioned                     |
+| (none)                     | `done`               | Every checkbox ticked; set in the same commit that ticks the last box |
+
+The pre-commit hook (`.githooks/check_tickets.py`) fails when a ticket's checkboxes and its `done` status disagree.
 
 When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label string from this table.
 

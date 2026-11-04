@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (Text tracer: `filing_search` over 10-K Sections (BM25))
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Chunks are embedded with `bge-base-en-v1.5` into the Chroma `filings` collection under the same chunk IDs as BM25. Re-indexing by accession number replaces them in both indexes.
 - [x] The As-of and metadata filter applies before both the semantic and BM25 searches. A Chunk past As-of can never re-enter through fusion.

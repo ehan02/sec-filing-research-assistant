@@ -7,7 +7,7 @@
 
 **Blocked by:** 06 (Retrieval eval: narrative set, Recall@5), 10 (Router agent and SKILL.md), 12 (Eval: numeric and point-in-time sets)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] An Abstention set of questions that have no answer in the filings (seeded with README example 10) is scored by correct-decline rate.
 - [x] Narrative answers are scored for citation validity (every Citation matches a real Chunk) and faithfulness (claims are supported by the cited text).

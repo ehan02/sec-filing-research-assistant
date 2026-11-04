@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (10-Q, 8-K exhibits and Amendments in search)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The narrative eval set is a versioned file: each question has a Ticker, an As-of, and the labeled relevant Section(s) or Chunk IDs. It is seeded from README example questions 1, 3, 4, 6 and 8.
 - [x] The evaluation harness runs the set through `filing_search` and reports Recall@5 per question and overall.

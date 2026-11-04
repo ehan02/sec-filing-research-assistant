@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Asking for `10-K` (or the default forms) also selects `10-K/A`, and likewise for 10-Q and 8-K. An Amendment is saved as its own Filing under its own accession number.
 - [x] Saved Filing metadata includes `availability_time` (US Eastern, timezone-aware) and `is_amendment`.

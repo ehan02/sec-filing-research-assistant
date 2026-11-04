@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 (Hybrid retrieval: semantic + BM25 + RRF + cross-encoder)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] 10-Q Sections carry their Part (`Part I Item 2`, `Part II Item 1A`, …), so the two Item 2s are never confused.
 - [x] Each 8-K Exhibit 99 document becomes one `Ex-99.x` Section, and its Chunks' URL points to the exhibit document, not the primary document.

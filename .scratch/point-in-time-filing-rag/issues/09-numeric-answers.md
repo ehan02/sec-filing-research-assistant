@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 (Facts tracer: `get_financials` as-of), 08 (Cited narrative answers)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Derived values (margins, growth, differences) are computed in Python from `get_financials` output and passed to the model as given numbers. The model never performs arithmetic.
 - [x] Fact Citations use the format `[TICKER concept FYyyyy, accession]`, with the period's Fiscal Year and the reporting Filing's accession number.

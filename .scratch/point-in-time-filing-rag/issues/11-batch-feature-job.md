@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 (`section_diff` tool)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] For each Original 10-K, the job compares Item 1A and Item 7 with the prior Original 10-K available at this Filing's own Availability Time, using the Section Diff module.
 - [x] Each row also records the change in risk-factor count and the length of each Section.

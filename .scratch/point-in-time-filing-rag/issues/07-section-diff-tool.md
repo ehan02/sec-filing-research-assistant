@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (Text tracer: `filing_search` over 10-K Sections (BM25))
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] `section_diff(ticker, section, form, fiscal_year_a, fiscal_year_b, as_of)` resolves the Ticker to a CIK and each Fiscal Year to the Original Filing of that form. An Amendment is used only if named explicitly.
 - [x] It returns a similarity score, the added and removed paragraphs, and both Filings' Citations.

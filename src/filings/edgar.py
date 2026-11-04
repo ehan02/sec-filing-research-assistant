@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import sys
@@ -49,6 +50,9 @@ SUBMISSIONS_MAX_AGE = timedelta(hours=24)
 
 _EX99_RE = re.compile(r"ex-?99", re.IGNORECASE)
 _DOC_EXT = (".htm", ".html", ".txt")
+
+# Per-filing progress (ASCII only). INFO, so the CLI shows it and pytest does not.
+log = logging.getLogger(__name__)
 
 
 def _emit(msg: str) -> None:
@@ -340,7 +344,7 @@ class EdgarDownloader:
                 continue
 
             stats["listed"] = len(records)
-            _emit(f"[{ticker.upper()}] {len(records)} filings ({', '.join(forms)})")
+            log.info(f"[{ticker.upper()}] {len(records)} filings ({', '.join(forms)})")
             for rec in records:
                 try:
                     _, downloaded = self.download_filing(rec, refresh=refresh)
@@ -350,12 +354,12 @@ class EdgarDownloader:
                     continue
                 stats["downloaded" if downloaded else "cached"] += 1
                 if downloaded:
-                    _emit(f"  + {rec.form:<5} filed {rec.filing_date}  {rec.accession_no}")
+                    log.info(f"  + {rec.form:<5} filed {rec.filing_date}  {rec.accession_no}")
 
             if include_facts:
                 try:
                     path = self.download_companyfacts(ticker, refresh=refresh)
-                    _emit(f"  companyfacts: {'saved' if path else 'none on EDGAR'}")
+                    log.info(f"  companyfacts: {'saved' if path else 'none on EDGAR'}")
                 except requests.RequestException as exc:
                     _emit(f"  ! companyfacts: {exc}")
                     stats["failed"] += 1
@@ -400,6 +404,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-facts", action="store_true", help="Skip XBRL companyfacts")
     parser.add_argument("--refresh", action="store_true", help="Ignore the local cache")
     args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stdout)
 
     since = args.since or date.today() - timedelta(days=365 * args.years)
     try:

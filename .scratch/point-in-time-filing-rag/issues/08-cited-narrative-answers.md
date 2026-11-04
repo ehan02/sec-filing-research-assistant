@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (Text tracer: `filing_search` over 10-K Sections (BM25))
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] The chat model is an injected dependency, chosen by config (Ollama or Claude). Tests inject a fake model that returns scripted answers.
 - [x] The prompt wraps retrieved context in `<documents>` tags marked as data, requires a Citation for every claim, and specifies the exact Abstention sentence: "The filings provided do not contain this information."

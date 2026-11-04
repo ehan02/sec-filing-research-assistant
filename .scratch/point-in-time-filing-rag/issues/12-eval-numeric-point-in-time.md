@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 (Facts tracer: `get_financials` as-of)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A generator builds numeric questions (concept, Company, period, As-of) and expected values from the facts table.
 - [x] A scorer compares `get_financials` output, and later end-to-end answers, by exact match with a configurable relative tolerance.

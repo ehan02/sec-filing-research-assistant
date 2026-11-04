@@ -11,7 +11,7 @@ Questions across the whole Universe ("did any company report a material weakness
 
 **Blocked by:** 05 (10-Q, 8-K exhibits and Amendments in search), 07 (`section_diff` tool), 09 (Numeric answers)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A LangGraph router classifies the question and calls the matching tools, always passing an explicit As-of (now, if the user gave none).
 - [x] Combined questions produce one answer that explains the numbers and the narrative together, with both kinds of Citation.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Downloader: amendments, Availability Time, fixture Universe)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] A saved 10-K splits into Sections `Item 1`, `1A`, `7`, `7A`, `8`, `9A`. The table of contents is skipped. A Filing whose Sections can't be found yields no Sections plus a warning, never a guessed split.
 - [x] Tables become markdown, and each table with its caption is exactly one Chunk.

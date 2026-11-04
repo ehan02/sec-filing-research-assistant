@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Downloader: amendments, Availability Time, fixture Universe)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] companyfacts load into the facts table with: CIK, concept, unit, value, period dates, Fiscal Year, Fiscal Period, form, accession number, and Availability Time. The table has no Ticker column.
 - [x] Fiscal Year and Fiscal Period are derived from the period dates and the Company's fiscal year end, with a few days' tolerance for 52/53-week years. The raw `fy`/`fp` fields are never exposed under those names.
