@@ -1,0 +1,3 @@
+# Fiscal Year describes the reported period, not the reporting Filing
+
+In XBRL companyfacts, `fy` and `fp` describe the Filing that reported a value, so FY2022 revenue repeated as a comparative in a FY2024 10-K arrives tagged `fy=2024`. We store and expose Fiscal Year and Fiscal Period as derived from the value's own period dates and the Company's fiscal year end, and we never pass the raw `fy`/`fp` through under those names. Otherwise `get_financials(periods=[FY2022])` would silently return values from the wrong year. Anyone "simplifying" the facts table back to the raw XBRL fields would reintroduce that bug.

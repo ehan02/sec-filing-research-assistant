@@ -2,7 +2,28 @@
 
 > Ask questions about 10-K, 10-Q and 8-K filings with cited answers and point-in-time filtering. Runs locally with Ollama, ChromaDB and LangGraph.
 
-**Status:** design phase. Nothing is implemented yet; see [Roadmap](#roadmap).
+**Status:** early build. The EDGAR downloader and its tests are implemented; everything else is a stub. See [Roadmap](#roadmap).
+
+**Docs:** domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md), design decisions are in [`docs/adr/`](docs/adr/), and the full spec is [`.scratch/point-in-time-filing-rag/spec.md`](.scratch/point-in-time-filing-rag/spec.md).
+
+---
+
+## Goal
+
+Build a financial RAG pipeline from document ingestion through retrieval and grounded generation, including structure-aware parsing, chunking, metadata, embeddings, and citation support.
+
+| Stage | Component |
+|---|---|
+| Document ingestion | [1] Downloader |
+| Structure-aware parsing | [2] Text pipeline: Section parser, tables to markdown |
+| Chunking | [2] Text pipeline: Section-bounded chunks |
+| Metadata | [Chunk metadata schema](#data-schemas) |
+| Embeddings | [2] Text pipeline: Chroma + BM25 index |
+| Retrieval | [4] `filing_search`: hybrid retrieval |
+| Grounded generation | [6] Generation: context-only prompt, abstention |
+| Citation support | [6] Generation: citation format and post-check |
+
+The agent router, `section_diff`, the numbers pipeline and the batch feature job build on top of this pipeline.
 
 ---
 
@@ -12,10 +33,10 @@ A local, point-in-time research assistant over SEC filings with two modes:
 
 - **Analyst / PM mode.** Answers questions about a company's filings and cites the exact filing and section.
   *"What did NVDA say about export restrictions in its latest 10-K, and how did that change from last year?"*
-- **Quant mode.** Extracts text features across a universe of companies, dated by filing date, for use in backtests.
+- **Quant mode.** Extracts text features across a universe of companies, dated by each filing's Availability Time, for use in backtests.
   *"For all 50 companies, score how much Item 1A changed year over year."* (In the style of Cohen, Malloy & Nguyen, 2020, "Lazy Prices".)
 
-**Rules it follows:** every number traces to an XBRL fact, every claim traces to a filing section, and nothing is used before its filing date.
+**Rules it follows:** every number traces to an XBRL fact, every claim traces to a filing Section, and nothing is used before its Availability Time (the EDGAR acceptance datetime; see [ADR-0001](docs/adr/0001-availability-time-is-acceptance-datetime.md)).
 
 ---
 
@@ -23,7 +44,7 @@ A local, point-in-time research assistant over SEC filings with two modes:
 
 | In | Out |
 |---|---|
-| 10-K, 10-Q, 8-K Exhibit 99.1 (earnings releases) | Academic papers, news, earnings call transcripts |
+| 10-K, 10-Q, 8-K Exhibit 99 (earnings releases), and their amendments (`/A`) | Academic papers, news, earnings call transcripts |
 | XBRL company facts (financial-statement numbers) | 13F holdings (possible later extension) |
 | Optional: 20-F / 40-F, manually downloaded IR PDFs | ESG fine-tuning, multimodal parsing |
 | A universe of 10–20 companies × 3–5 years to start | Real-time data; price data inside the RAG |
@@ -54,7 +75,7 @@ A local, point-in-time research assistant over SEC filings with two modes:
                      [1] Downloader + cache (User-Agent, under 10 req/s)
                     ┌─────────────┴─────────────┐
            [2] Text pipeline            [3] Numbers pipeline
-           HTML → Items → chunks        companyfacts → SQLite facts
+           HTML → Sections → chunks     companyfacts → SQLite facts
            → Chroma + BM25
                     └─────────────┬─────────────┘
                      [4] Tools (all take as_of)
@@ -75,26 +96,31 @@ A local, point-in-time research assistant over SEC filings with two modes:
 - Ticker→CIK map from SEC's `company_tickers.json`.
 - Reads the filing list (`form, accessionNumber, reportDate, filingDate, acceptanceDateTime, primaryDocument`) from `data.sec.gov/submissions/CIK##########.json`.
 - Saves raw files under `data/filings/{cik}/{accession}/`. It's idempotent (filings already saved are skipped), stays under 10 requests per second, and sends the User-Agent that SEC requires, set from `.env`.
+- *Planned:* also select amendments (`10-K` includes `10-K/A`), save each filing's Availability Time in US Eastern time, and expose an accession → Availability Time lookup for the numbers pipeline.
 
 ### [2] Text pipeline: `src/filings/parse.py`, `src/rag/index.py`
-- **Parse:** strip the HTML, split into Items (1, 1A, 7, 7A, 8, 9A; Part I Item 2 for 10-Qs), and skip the table of contents.
+- **Parse:** strip the HTML, split into form-aware Sections, and skip the table of contents. Sections are 10-K Items (`Item 1`, `1A`, `7`, `7A`, `8`, `9A`), Part-qualified 10-Q Items (`Part I Item 2`, `Part II Item 1A`, …), and 8-K exhibits (`Ex-99.1`, …).
 - **Tables:** convert to markdown and keep each one in a single chunk, with its caption.
-- **Chunk:** about 800 tokens with 100 overlap, never crossing an Item boundary.
-- **Index:** embed into Chroma and build BM25 over the same `chunk_id`s. Re-indexing is keyed by accession number.
+- **Chunk:** about 800 tokens with 100 overlap, never crossing a Section boundary.
+- **Index:** embed into Chroma and build BM25 over the same `chunk_id`s. Re-indexing is keyed by accession number. An amendment is indexed as its own filing and never replaces its original.
 
 ### [3] Numbers pipeline: `src/filings/xbrl.py`
 - Loads `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` into the SQLite `facts` table.
-- `get_fact(ticker, concept, period, as_of)` returns the most recent value with `filed ≤ as_of`, which handles restatements.
+- Fiscal Year and Fiscal Period are derived from each value's own period dates, never copied from the raw XBRL `fy`/`fp` fields, which describe the reporting filing ([ADR-0002](docs/adr/0002-fiscal-year-describes-the-reported-period.md)).
+- Each fact inherits the Availability Time of the filing named by its `accn`.
+- `get_fact(cik, concept, period, as_of)` returns the value with the latest Availability Time ≤ `as_of`, so later restatements never leak.
 
 ### [4] Tools: `src/agents/tools.py`
 
 | Tool | Input | Output |
 |---|---|---|
-| `filing_search` | query, ticker?, form?, fy?, item?, as_of | Top 5 chunks with citation metadata |
-| `get_financials` | ticker, concepts, periods, as_of | A table of values, each with its accession number |
-| `section_diff` | ticker, item, fy_a, fy_b | Similarity score, added and removed paragraphs, citations |
+| `filing_search` | query, ticker?, form?, fiscal_year?, section?, as_of | Top 5 chunks with citation metadata |
+| `get_financials` | ticker, concepts, periods, as_of | A table of values, each with its accession number and Availability Time |
+| `section_diff` | ticker, section, form, fiscal_year_a, fiscal_year_b, as_of | Similarity score, added and removed paragraphs, citations |
 
-**Retrieval inside `filing_search`:** metadata filter first → semantic top 20 + BM25 top 20 → reciprocal rank fusion (k=60) → cross-encoder → top 5.
+Every tool resolves the ticker to a CIK on input. "Latest 10-K" and "prior year" mean the latest *original* filing available at `as_of`, not an amendment.
+
+**Retrieval inside `filing_search`:** metadata filter (including Availability Time ≤ `as_of`) first → semantic top 20 + BM25 top 20 → reciprocal rank fusion (k=60) → cross-encoder → top 5.
 
 ### [5] Router / agent: `src/agents/`, `skills/filing-research/SKILL.md`
 
@@ -125,7 +151,8 @@ You also compare Ollama vs Claude and embedding model A vs B on the same sets.
 
 ### [8] Batch feature job: `src/features/filing_features.py`
 - For each ticker × filing: Item 1A / Item 7 year-over-year similarity, change in risk-factor count, and section lengths.
-- Output: `features.parquet` keyed by `(cik, accession, filed_date)`, ready to join with forward returns elsewhere.
+- Each filing is compared with the prior original 10-K available at that filing's own Availability Time.
+- Output: `features.parquet` keyed by `(cik, accession_no, availability_time)`, ready to join with forward returns elsewhere.
 - A 10–20 company universe demonstrates the pipeline. It is not evidence that the signal works.
 
 ---
@@ -134,21 +161,26 @@ You also compare Ollama vs Claude and embedding model A vs B on the same sets.
 
 **Chunk metadata (Chroma)**
 ```
-chunk_id, cik, ticker, company, form, fiscal_year, fiscal_period,
-report_date, filed_date, acceptance_datetime, accession_no,
-item, chunk_idx, is_table, url
+chunk_id, cik, ticker, company, form, is_amendment, fiscal_year,
+fiscal_period, report_date, availability_time, accession_no,
+section, chunk_idx, is_table, url
 ```
+`ticker` is today's ticker, for display only. `url` is the document the text came from (primary document or exhibit).
 
 **`facts` table (SQLite)**
 ```
-cik, ticker, concept, unit, value, period_start, period_end,
-fy, fp, form, accn, filed
+cik, concept, unit, value, period_start, period_end,
+fiscal_year, fiscal_period, form, accn, availability_time
 ```
 
-**Citation format**
+**Citation formats**
 ```
-[AAPL 10-K FY2024 Item 1A, 0000320193-24-000123]
+[AAPL 10-K FY2024 Item 1A, 0000320193-24-000123]          10-K Section
+[JPM 10-Q FY2024 Q2 Part I Item 2, <accession>]           10-Q Section
+[AAPL 8-K Ex-99.1, <accession>]                           8-K exhibit
+[AAPL us-gaap:Revenues FY2022, 0000320193-24-000123]      XBRL fact (period's FY, reporting filing's accession)
 ```
+An amendment is cited with its own form, e.g. `10-K/A`.
 
 ---
 
@@ -162,7 +194,7 @@ fy, fp, form, accn, filed
 | 4 | How did JPM describe its credit-loss outlook in the last two 10-Qs? | `filing_search` (MD&A, filtered by date) | Citation check |
 | 5 | What's the change in share count and buyback authorization over 3 years? | `get_financials` + `filing_search` | Automatic + citation |
 | 6 | Did any company in the universe change auditor or report a material weakness? | `filing_search` (Item 9A, all tickers) | Hand label |
-| 7 | Rank the universe by Item 1A year-over-year similarity, as of each filing date | `section_diff` (batch) | Reproducible output |
+| 7 | Rank the universe by Item 1A year-over-year similarity, as of each filing's Availability Time | `section_diff` (batch) | Reproducible output |
 | 8 | Who does TSLA list as key suppliers or single-source risks? | `filing_search` | Citation check |
 | 9 | As of 2022-03-01, what was META's latest reported capex? | `get_financials` with `as_of` | Automatic; must not use later restatements |
 | 10 | What's NVDA's FY2027 revenue guidance? | Should abstain | Abstention accuracy |
@@ -193,9 +225,9 @@ sec-filing-research-assistant/
 
 ## Design principles
 
-1. **Point-in-time everywhere:** every tool filters on `filed ≤ as_of`.
-2. **Identity is the accession number,** never the ticker.
-3. **Structure before semantics:** split by Item and keep tables whole.
+1. **Point-in-time everywhere:** every tool filters on Availability Time ≤ `as_of`. A date-only `as_of` means the end of that day, US Eastern time.
+2. **Identity is the accession number for filings and the CIK for companies,** never the ticker.
+3. **Structure before semantics:** split by Section and keep tables whole.
 4. **Numbers from XBRL, words from RAG.** The LLM never calculates.
 5. **Cite or abstain.** Citations are checked in code.
 6. **Retrieval first:** get retrieval working and measured before adding the LLM.
@@ -205,9 +237,9 @@ sec-filing-research-assistant/
 
 ## Roadmap
 
-- [ ] 1. EDGAR downloader + ticker→CIK map + local cache
+- [x] 1. EDGAR downloader + ticker→CIK map + local cache (amendments and Availability Time still to add)
 - [ ] 2. XBRL facts → SQLite, `get_fact(..., as_of)`
-- [ ] 3. Item parser (10-K / 10-Q), tables to markdown
+- [ ] 3. Section parser (10-K / 10-Q / 8-K exhibits), tables to markdown
 - [ ] 4. Chunking + Chroma + BM25 indexing
 - [ ] 5. Hybrid retrieval: filters → semantic + BM25 → RRF → cross-encoder
 - [ ] 6. `section_diff` tool
@@ -255,4 +287,4 @@ The design builds on Chapter 22 (RAG for Financial Research):
 | 07 Institutional holdings graph | Out of scope (13F is a candidate extension) |
 | 08 RAG security | **Lighter:** context-as-data wrapping and citation checks only |
 
-**New in this project:** XBRL facts database, own EDGAR downloader and Item parser, 10-Q/8-K coverage, enforced as-of filtering (including restatements), section diff tool, a router across text, numbers and diffs, batch feature extraction, and local-first dual LLM providers.
+**New in this project:** XBRL facts database, own EDGAR downloader and Section parser, 10-Q/8-K coverage, enforced as-of filtering (including restatements), section diff tool, a router across text, numbers and diffs, batch feature extraction, and local-first dual LLM providers.
