@@ -248,6 +248,17 @@ COMPANYFACTS = {
                     _fact("2023-01-01", "2023-12-31", 150_000_000, ACC_10K_2023, 2023, "FY", "10-K", "2024-02-20"),
                 ]},
             },
+            "EffectiveIncomeTaxRateReconciliationAtFederalStatutoryIncomeTaxRate": {
+                "label": "Statutory tax rate",
+                # One Filing reporting two values that both map to FY2022 (a duration and an
+                # instant), repeated by the next: ambiguous, not a Restatement, so eval sets skip it.
+                "units": {"pure": [
+                    _fact("2022-01-01", "2022-12-31", 0.35, ACC_10K_2022, 2022, "FY", "10-K", "2023-02-21"),
+                    _fact(None, "2022-12-31", 0.21, ACC_10K_2022, 2022, "FY", "10-K", "2023-02-21"),
+                    _fact("2022-01-01", "2022-12-31", 0.35, ACC_10K_2023, 2023, "FY", "10-K", "2024-02-20"),
+                    _fact(None, "2022-12-31", 0.21, ACC_10K_2023, 2023, "FY", "10-K", "2024-02-20"),
+                ]},
+            },
         },
     },
 }
