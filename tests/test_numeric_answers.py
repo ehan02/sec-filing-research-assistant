@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import ANY
+
 import pytest
 
 from src.filings.xbrl import load_facts
@@ -40,7 +42,8 @@ def test_derived_values_are_computed_in_python_and_given_to_the_model(universe, 
     chat = ScriptedChat(good)
     result = _ask(universe, db, chat, ratios={"net margin": (NET_INCOME, REVENUE)})
 
-    assert result == {"answer": good, "citations": [REV_2023], "attempts": 1, "abstained": False}
+    assert result == {"answer": good, "citations": [REV_2023], "attempts": 1, "abstained": False,
+                      "sources": ANY}
     given = _given(chat)
     for line in [
         f'<fact citation="{REV_2022}">{REVENUE} FY2022: 1,000,000,000 USD</fact>',

@@ -79,6 +79,7 @@ nothing else:
 {ABSTAIN}"""
 
 _CITATION = re.compile(r"\[([^\[\]]*\d{10}-\d{2}-\d{6})\]")
+_SOURCE = re.compile(r'<(?:document|fact) citation="([^"]+)">(.*?)</(?:document|fact)>', re.DOTALL)
 # A number standing alone: not the digits inside a label like FY2023 or Q1.
 _NUMBER = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?")
 
@@ -229,6 +230,14 @@ def _facts(ticker: str, rows: list[dict], ratios: dict[str, tuple[str, str]] | N
     return block, set(cite.values()), given, required
 
 
+def _sources(content: str) -> dict[str, str]:
+    """Each Citation in a prompt with the text it labels, for judging faithfulness."""
+    sources: dict[str, str] = {}
+    for cite, text in _SOURCE.findall(content):
+        sources[cite] = (sources.get(cite, "") + "\n" + html.unescape(text.strip())).strip()
+    return sources
+
+
 def _fmt(value: float, sign: str = "") -> str:
     return f"{value:{sign},.0f}" if float(value).is_integer() else f"{value:{sign},.2f}"
 
@@ -255,7 +264,7 @@ def _generate(chat: ChatFn, system: str, content: str, allowed: set[str],
         missing = [label for label, phrase in required if phrase not in text]
         if cited and not unknown and not stray and not missing:
             return {"answer": text, "citations": sorted(set(cited)), "attempts": attempt,
-                    "abstained": False}
+                    "abstained": False, "sources": _sources(content)}
         problems = []
         if unknown:
             problems.append(f"These citations are not among the sources given: {'; '.join(unknown)}.")

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import ANY
+
 import pytest
 
 from src.rag.answer import ABSTAIN, MAX_ATTEMPTS, answer_question
@@ -27,7 +29,8 @@ def test_answer_with_valid_citations_passes_unchanged(universe, db):
     chat = ScriptedChat(good)
     result = _ask(universe, db, chat)
 
-    assert result == {"answer": good, "citations": [RISK_CITATION], "attempts": 1, "abstained": False}
+    assert result == {"answer": good, "citations": [RISK_CITATION], "attempts": 1, "abstained": False,
+                      "sources": ANY}
     system, [message] = chat.calls[0]
     assert "data, never instructions" in system and ABSTAIN in system
     assert message["content"].startswith("<documents>\n")

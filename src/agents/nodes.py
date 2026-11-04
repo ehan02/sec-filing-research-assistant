@@ -8,6 +8,7 @@ and hands the tool output to a generator in ``src.rag.answer``.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, TypedDict
@@ -18,6 +19,8 @@ from src.filings.edgar import EdgarDownloader
 from src.rag.answer import ABSTAIN, ChatFn, answer_combined, answer_from_chunks, answer_from_diff, answer_from_facts
 
 ROUTES = ("narrative", "numeric", "change", "combined", "abstain")
+PLAN_KEYS = {"route", "tickers", "as_of", "query", "form", "section", "fiscal_year", "latest", "concepts",
+             "periods", "ratios", "fiscal_year_a", "fiscal_year_b"}
 
 PLANNER = """You plan how to answer a question about companies' SEC filings. Reply with one JSON \
 object and nothing else, with these keys:
@@ -59,8 +62,31 @@ def plan(state: State, chat: ChatFn) -> State:
         p = {}
     if not isinstance(p, dict) or p.get("route") not in ROUTES:
         p = {"route": "abstain"}
+    p = _normalize(p, state["question"])
     asked = p.get("as_of") if str(p.get("as_of")) in state["question"] else None
     return {"plan": p, "as_of": normalize_as_of(state.get("as_of") or asked)}
+
+
+def _normalize(p: dict[str, Any], question: str) -> dict[str, Any]:
+    """Repair what small models get wrong: arguments nested under another key,
+    a bare Ticker string, fiscal years as text, and search filters the question
+    never asked for (an invented Section or Fiscal Year finds nothing)."""
+    for key, value in list(p.items()):
+        if isinstance(value, dict) and value and set(value) <= PLAN_KEYS:
+            del p[key]
+            for k, v in value.items():
+                p.setdefault(k, v)
+    if isinstance(p.get("tickers"), str):
+        p["tickers"] = [p["tickers"]]
+    for key in ("fiscal_year", "fiscal_year_a", "fiscal_year_b"):
+        year = re.fullmatch(r"(?:FY)?\s*(\d{4})", str(p.get(key) or "").strip(), re.IGNORECASE)
+        p[key] = int(year.group(1)) if year else None
+    if p["route"] in ("narrative", "combined"):
+        if p.get("section") and str(p["section"]).lower() not in question.lower():
+            p["section"] = None
+        if p["fiscal_year"] and str(p["fiscal_year"]) not in question:
+            p["fiscal_year"] = None
+    return p
 
 
 def narrative(state: State, chat: ChatFn, downloader: EdgarDownloader, chunks_db: Path, **_) -> State:
@@ -128,6 +154,7 @@ def _per_company(state: State, downloader: EdgarDownloader, run: Callable[[str],
         "answer": "\n\n".join(f"{t}: {r['answer']}" for t, r in results.items()),
         "citations": sorted({c for r in results.values() for c in r["citations"]}),
         "abstained": all(r["abstained"] for r in results.values()),
+        "sources": {c: t for r in results.values() for c, t in r.get("sources", {}).items()},
         "per_company": results,
     }}
 

@@ -1,0 +1,13 @@
+{
+  "description": "Abstention set, scored by correct-decline rate end-to-end through the router: none of these is answered by a Filing available at its As-of. README example 10 (FY2027 guidance) is adapted to AAPL, the only Company downloaded so far; a null as_of means now.",
+  "questions": [
+    {"id": "future-guidance", "seed": 10, "question": "What is Apple's FY2028 revenue guidance?", "as_of": null},
+    {"id": "future-eps", "question": "What will Apple's diluted earnings per share be in FY2028?", "as_of": null},
+    {"id": "future-fiscal-year", "question": "What was Apple's revenue in FY2031?", "as_of": null},
+    {"id": "not-yet-filed", "question": "What was Apple's revenue in FY2024?", "as_of": "2024-06-30"},
+    {"id": "stock-price", "question": "What is Apple's stock price today?", "as_of": null},
+    {"id": "product-roadmap", "question": "Which iPhone models will Apple launch in 2028?", "as_of": null},
+    {"id": "unit-sales", "question": "How many iPhone units did Apple sell in FY2024?", "as_of": null},
+    {"id": "outside-universe", "question": "What did NVIDIA say about export restrictions in its latest 10-K?", "as_of": null}
+  ]
+}

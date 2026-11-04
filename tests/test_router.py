@@ -110,6 +110,28 @@ def test_universe_wide_question_runs_per_company(env):
     assert result["per_company"]["FIXT"]["citations"] == [RISK]
 
 
+def test_malformed_small_model_plan_is_normalized(env):
+    # What llama3.2 returns: nested arguments, a quarter in fiscal_year, an invented section.
+    plan = {"route": "combined", "tickers": "FIXT", "narrative": "query", "form": "10-K", "latest": True,
+            "section": "Item 7", "fiscal_year": "FY2023 Q2",
+            "numeric": {"concepts": [REVENUE], "periods": ["FY2023"], "ratios": {}}}
+    answer = f"Revenue was 1,200,000,000 USD in FY2023 [{REV_2023}]."
+    result, _ = _ask(env, plan, answer, question="What was FIXT's revenue, and what risks does it face?")
+
+    assert result["citations"] == [REV_2023]
+    (_, financials), (_, search) = env.calls
+    assert (financials["ticker"], financials["concepts"], financials["periods"]) == ("FIXT", [REVENUE], ["FY2023"])
+    assert (search["section"], search["fiscal_year"]) == (None, None)
+
+
+def test_filters_named_in_the_question_are_kept(env):
+    plan = RISK_PLAN | {"route": "narrative", "latest": False, "section": "Item 1A", "fiscal_year": "FY2023"}
+    _ask(env, plan, f"Export restrictions are a risk [{RISK}].",
+         question="What does FIXT's FY2023 10-K say in Item 1A about export restrictions?")
+    [(_, kw)] = env.calls
+    assert (kw["section"], kw["fiscal_year"]) == ("Item 1A", 2023)
+
+
 @pytest.mark.parametrize("plan", [{"route": "abstain"}, "not a plan"])
 def test_future_or_unplannable_question_abstains_without_tools(env, plan):
     result, chat = _ask(env, plan)
