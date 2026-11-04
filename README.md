@@ -116,7 +116,7 @@ A local, point-in-time research assistant over SEC filings with two modes:
 |---|---|---|
 | `filing_search` | query, ticker?, form?, fiscal_year?, section?, as_of | Top 5 chunks with citation metadata |
 | `get_financials` | ticker, concepts, periods, as_of | A table of values, each with its accession number and Availability Time |
-| `section_diff` | ticker, section, form, fiscal_year_a, fiscal_year_b, as_of | Similarity score, added and removed paragraphs, citations |
+| `section_diff` | ticker, section, form, fiscal_year_a, fiscal_year_b, as_of | Similarity score, added, removed and reworded paragraphs, citations |
 
 Every tool resolves the ticker to a CIK on input. "Latest 10-K" and "prior year" mean the latest *original* filing available at `as_of`, not an amendment.
 

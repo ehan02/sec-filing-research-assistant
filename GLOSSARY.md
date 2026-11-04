@@ -70,5 +70,5 @@ _Avoid_: Refusal
 The fixed list of Companies the assistant has downloaded and indexed.
 
 **Section Diff**:
-A comparison of the same Section across two Filings of the same form: a similarity score plus added and removed paragraphs.
+A comparison of the same Section across two Filings of the same form: a similarity score plus added, removed and reworded paragraphs.
 _Avoid_: Redline, change report

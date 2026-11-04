@@ -156,7 +156,8 @@ _RISKS_2023 = [
     "We depend on a single supplier for our sensor chips.",
     "Our sales are concentrated among a small number of customers.",
     "New export restrictions could prevent us from selling sensors in certain markets.",
-    "Changes in foreign exchange rates could reduce our reported revenue.",
+    # Reworded from FY2022: a Section Diff reports it as changed, not added.
+    "Changes in foreign exchange rates could reduce our reported revenue and margins.",
 ]
 
 TEN_K_2022 = _ten_k(2022, _RISKS_2022, revenue=1000, prior_revenue=900)
