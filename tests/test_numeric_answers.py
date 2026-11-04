@@ -35,7 +35,8 @@ def _given(chat):
 
 
 def test_derived_values_are_computed_in_python_and_given_to_the_model(universe, db):
-    good = f"FY2023 revenue was 1,200,000,000 USD, up 20.0% [{REV_2023}]."
+    good = (f"FY2023 revenue was 1,200,000,000 USD, up 20.0% [{REV_2023}]. "
+            f"Net margin was 9.0% in FY2022 and 12.5% in FY2023 [{REV_2023}].")
     chat = ScriptedChat(good)
     result = _ask(universe, db, chat, ratios={"net margin": (NET_INCOME, REVENUE)})
 
@@ -83,6 +84,33 @@ def test_missing_fact_is_given_as_unavailable(universe, db):
     given = _given(chat)
     assert f"<fact>{REVENUE} FY2024 Q1: unavailable</fact>" in given
     assert "change FY2023 to FY2024 Q1" not in given
+
+
+def test_answer_omitting_a_requested_ratio_is_rejected(universe, db):
+    partial = f"Net margin was 12.5% in FY2023 [{REV_2023}]."
+    chat = ScriptedChat(partial, f"Net margin was 9.0% in FY2022 and 12.5% in FY2023 [{REV_2023}].")
+    result = _ask(universe, db, chat, ratios={"net margin": (NET_INCOME, REVENUE)})
+
+    assert result["attempts"] == 2
+    retry = chat.calls[1][1][2]["content"]
+    assert "net margin FY2022: 9.0%" in retry and "net margin FY2023" not in retry
+
+
+def test_answer_not_stating_a_missing_fact_as_unavailable_is_rejected(universe, db):
+    silent = f"FY2023 revenue was 1,200,000,000 USD [{REV_2023}]."
+    good = f"{silent} FY2024 Q1 revenue is unavailable."
+    chat = ScriptedChat(silent, good)
+    result = _ask(universe, db, chat, concepts=[REVENUE], periods=["FY2023", "FY2024 Q1"],
+                  as_of="2024-05-01T16:09")
+
+    assert (result["answer"], result["attempts"]) == (good, 2)
+    assert f"{REVENUE} FY2024 Q1" in chat.calls[1][1][2]["content"]
+
+
+def test_abstention_sentence_after_a_real_answer_is_dropped(universe, db):
+    good = f"FY2023 revenue was 1,200,000,000 USD [{REV_2023}]."
+    result = _ask(universe, db, ScriptedChat(f"{good}\n\n{ABSTAIN}"))
+    assert (result["answer"], result["attempts"], result["abstained"]) == (good, 1, False)
 
 
 def test_no_facts_at_the_as_of_abstains_without_calling_the_model(universe, db):

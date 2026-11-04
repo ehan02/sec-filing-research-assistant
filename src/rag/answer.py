@@ -55,9 +55,10 @@ Every sentence that states a number must end with the citation of each fact it c
 copied exactly from that fact's citation attribute (or a derived value's citations attribute) \
 and wrapped in square brackets, for example [AAPL us-gaap:Revenues FY2022, 0000320193-24-000123].
 
-A fact marked unavailable must be stated as unavailable, never estimated.
+Report every derived ratio given. For each fact marked unavailable, say it is "unavailable"; \
+never estimate it.
 
-If the facts do not answer the question, reply with exactly this sentence and nothing else:
+Only if none of the facts answer the question, reply with exactly this sentence and nothing else:
 {ABSTAIN}"""
 
 _CITATION = re.compile(r"\[([^\[\]]*\d{10}-\d{2}-\d{6})\]")
@@ -110,10 +111,11 @@ def answer_financials(question: str, chat: ChatFn, ticker: str, concepts: list[s
     facts = {(r["concept"], r["period"]): r for r in rows}
     cite = {k: f"{ticker.upper()} {r['concept']} {r['period']}, {r['accession_no']}"
             for k, r in facts.items() if r["value"] is not None}
-    lines, values = [], []
+    lines, values, required = [], [], []
     for (concept, period), r in facts.items():
         if r["value"] is None:
             lines.append(f"<fact>{concept} {period}: unavailable</fact>")
+            required.append((f"{concept} {period}: unavailable", "unavailable"))
         else:
             values.append(f"{_fmt(r['value'])} {r['unit']}")
             lines.append(f'<fact citation="{cite[concept, period]}">{concept} {period}: {values[-1]}</fact>')
@@ -136,12 +138,13 @@ def answer_financials(question: str, chat: ChatFn, ticker: str, concepts: list[s
         for period in periods:
             n, d = facts.get((numerator, period)), facts.get((denominator, period))
             if n and d and n["value"] is not None and d["value"]:
-                derived(f"{name} {period}", f"{n['value'] / d['value'] * 100:.1f}%",
-                        (numerator, period), (denominator, period))
+                ratio = f"{n['value'] / d['value'] * 100:.1f}%"
+                derived(f"{name} {period}", ratio, (numerator, period), (denominator, period))
+                required.append((f"{name} {period}: {ratio}", ratio))
 
-    content = "<facts>\n" +"\n".join(lines) + f"\n</facts>\n\nQuestion: {question}"
+    content = "<facts>\n" + "\n".join(lines) + f"\n</facts>\n\nQuestion: {question}"
     given = {n.replace(",", "") for v in values for n in _NUMBER.findall(v)}
-    return _generate(chat, NUMERIC_SYSTEM, content, set(cite.values()), given)
+    return _generate(chat, NUMERIC_SYSTEM, content, set(cite.values()), given, required)
 
 
 def _fmt(value: float, sign: str = "") -> str:
@@ -149,22 +152,26 @@ def _fmt(value: float, sign: str = "") -> str:
 
 
 def _generate(chat: ChatFn, system: str, content: str, allowed: set[str],
-              given_numbers: set[str] | None = None) -> dict:
+              given_numbers: set[str] | None = None, required: list[tuple[str, str]] = ()) -> dict:
     """Ask ``chat`` and post-check the answer, regenerating up to ``MAX_ATTEMPTS`` times.
 
     The answer must cite only ``allowed`` Citations, cite at least one, and,
-    when ``given_numbers`` is set, state no number outside it.
+    when ``given_numbers`` is set, state no number outside it. Each
+    ``required`` ``(label, phrase)`` must have its phrase in the answer. An
+    Abstention sentence tacked onto the end of a real answer is dropped.
     """
     messages = [{"role": "user", "content": content}]
     for attempt in range(1, MAX_ATTEMPTS + 1):
         text = chat(system, messages).strip()
         if text == ABSTAIN:
             return {"answer": ABSTAIN, "citations": [], "attempts": attempt, "abstained": True}
+        text = text.removesuffix(ABSTAIN).rstrip()
         cited = _CITATION.findall(text)
         unknown = [c for c in cited if c not in allowed]
         stray = [] if given_numbers is None else [
             n for n in _NUMBER.findall(_CITATION.sub("", text)) if n.replace(",", "") not in given_numbers]
-        if cited and not unknown and not stray:
+        missing = [label for label, phrase in required if phrase not in text]
+        if cited and not unknown and not stray and not missing:
             return {"answer": text, "citations": sorted(set(cited)), "attempts": attempt,
                     "abstained": False}
         problems = []
@@ -174,6 +181,8 @@ def _generate(chat: ChatFn, system: str, content: str, allowed: set[str],
             problems.append("It has no citations.")
         if stray:
             problems.append(f"These numbers were not given: {', '.join(stray)}.")
+        if missing:
+            problems.append(f"It leaves out: {'; '.join(missing)}.")
         messages += [{"role": "assistant", "content": text},
                      {"role": "user", "content": f"Your answer was rejected. {' '.join(problems)} "
                       f"Answer again, using only what you were given, or reply exactly: {ABSTAIN}"}]
