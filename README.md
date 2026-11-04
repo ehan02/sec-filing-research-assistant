@@ -59,7 +59,7 @@ A local, point-in-time research assistant over SEC filings with two modes:
 | Agent | LangGraph + LangChain |
 | LLM | Ollama (`qwen2.5:7b` or `llama3.1:8b`); Claude API for comparison |
 | Embeddings | sentence-transformers `BAAI/bge-base-en-v1.5` |
-| Re-ranker | `CrossEncoder("BAAI/bge-reranker-base")` |
+| Re-ranker | `CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")`; `BAAI/bge-reranker-base` via `RERANK_MODEL` where memory allows |
 | Vector store | ChromaDB, collection `filings` |
 | Keyword index | `rank-bm25` |
 | Numbers store | SQLite, table `facts` |
@@ -101,7 +101,7 @@ A local, point-in-time research assistant over SEC filings with two modes:
 ### [2] Text pipeline: `src/filings/parse.py`, `src/rag/index.py`
 - **Parse:** strip the HTML, split into form-aware Sections, and skip the table of contents. Sections are 10-K Items (`Item 1`, `1A`, `7`, `7A`, `8`, `9A`), Part-qualified 10-Q Items (`Part I Item 2`, `Part II Item 1A`, …), and 8-K exhibits (`Ex-99.1`, …).
 - **Tables:** convert to markdown and keep each one in a single chunk, with its caption.
-- **Chunk:** about 800 tokens with 100 overlap, never crossing a Section boundary.
+- **Chunk:** 300 words (about 360 tokens) with 50 words of overlap, never crossing a Section boundary. Chunks stay under the 512-token limit of the embedder and re-ranker, so both see all of each one.
 - **Index:** embed into Chroma and build BM25 over the same `chunk_id`s. Re-indexing is keyed by accession number. An amendment is indexed as its own filing and never replaces its original.
 
 ### [3] Numbers pipeline: `src/filings/xbrl.py`

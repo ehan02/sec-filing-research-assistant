@@ -1,9 +1,12 @@
 """Chunk parsed Sections and store them, keyed by accession number.
 
-Chunks are about 800 tokens (600 words) with about 100 tokens (75 words) of
-overlap, never crossing a Section boundary. Each table, with its caption, is
+Chunks are 300 words (about 360 tokens, at most ~500 in number-heavy text)
+with 50 words of overlap, so the 512-token embedder and reranker see all of
+each one; they never cross a Section boundary. Each table, with its caption, is
 exactly one Chunk however long it is. Chunks live in a SQLite ``chunks`` table
-that retrieval filters on before ranking.
+that retrieval filters on before ranking, and their embeddings in the Chroma
+``filings`` collection (in a ``chroma`` folder beside the database) under the
+same chunk IDs.
 """
 
 from __future__ import annotations
@@ -12,15 +15,20 @@ import json
 import os
 import sqlite3
 from datetime import date, datetime, timezone
+from functools import cache
 from pathlib import Path
+
+import chromadb
+from sentence_transformers import SentenceTransformer
 
 from src.filings.edgar import ROOT, EdgarDownloader, _emit
 from src.filings.parse import parse_10k
 from src.filings.xbrl import fiscal_year
 
 CHUNKS_DB = Path(os.getenv("CHUNKS_DB", ROOT / "data" / "chunks.db"))
-CHUNK_WORDS = 600
-OVERLAP_WORDS = 75
+EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-base-en-v1.5")
+CHUNK_WORDS = 300
+OVERLAP_WORDS = 50
 
 COLUMNS = ("chunk_id", "cik", "ticker", "company", "form", "is_amendment", "fiscal_year",
            "fiscal_period", "report_date", "availability_time", "accession_no", "section",
@@ -39,6 +47,22 @@ def connect(db_path: Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     return conn
+
+
+def collection(db_path: Path) -> chromadb.Collection:
+    """The Chroma ``filings`` collection that belongs to this chunks database."""
+    client = chromadb.PersistentClient(path=str(db_path.with_name("chroma")),
+                                       settings=chromadb.Settings(anonymized_telemetry=False))
+    return client.get_or_create_collection("filings", metadata={"hnsw:space": "cosine"})
+
+
+@cache
+def embedder(model: str = EMBED_MODEL) -> SentenceTransformer:
+    return SentenceTransformer(model)
+
+
+def embed(texts: list[str]) -> list[list[float]]:
+    return embedder().encode(texts, normalize_embeddings=True, batch_size=16).tolist()
 
 
 def chunk_section(blocks: list[dict]) -> list[dict]:
@@ -105,5 +129,11 @@ def index_company(downloader: EdgarDownloader, ticker: str, db_path: Path = CHUN
             conn.execute("DELETE FROM chunks WHERE accession_no = ?", (meta["accession_no"],))
             conn.executemany(f"INSERT INTO chunks VALUES ({', '.join('?' * len(COLUMNS))})",
                              [tuple(r[c] for c in COLUMNS) for r in rows])
+        vectors = collection(db_path)
+        vectors.delete(where={"accession_no": meta["accession_no"]})
+        if rows:
+            vectors.add(ids=[r["chunk_id"] for r in rows],
+                        embeddings=embed([r["text"] for r in rows]),
+                        metadatas=[{"accession_no": r["accession_no"]} for r in rows])
         counts[meta["accession_no"]] = len(rows)
     return counts

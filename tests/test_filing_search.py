@@ -23,7 +23,8 @@ def _search(universe, db, query, **kw):
 
 
 def test_10k_not_yet_public_is_never_returned(universe, db):
-    assert _search(universe, db, "export restrictions", as_of="2024-02-19") == []
+    before = _search(universe, db, "export restrictions", as_of="2024-02-19")
+    assert before and fu.ACC_10K_2023 not in {h["accession_no"] for h in before}
 
     [hit, *_] = _search(universe, db, "export restrictions", as_of="2024-02-20")
     assert (hit["accession_no"], hit["section"], hit["fiscal_year"]) == (fu.ACC_10K_2023, "Item 1A", 2023)
@@ -47,8 +48,21 @@ def test_table_comes_back_whole_with_caption_across_chunk_boundary(universe, tmp
     assert all(len(h["text"].split()) <= 10 for h in hits if not h["is_table"])
 
 
+def test_paraphrase_without_shared_keywords_finds_the_chunk(universe, db):
+    query = "governmental bans hindering overseas trade"
+    [hit, *_] = _search(universe, db, query, as_of=None)
+    assert (hit["accession_no"], hit["section"]) == (fu.ACC_10K_2023, "Item 1A")
+    assert not set(query.split()) & set(hit["text"].lower().split())
+
+
+def test_as_of_holds_with_both_retrievers(universe, db):
+    hits = _search(universe, db, "governmental bans hindering overseas trade", as_of="2024-02-19")
+    assert hits and {h["accession_no"] for h in hits} == {fu.ACC_10K_2022}
+
+
 def test_table_of_contents_is_skipped(universe, db):
-    assert _search(universe, db, "contents", as_of=None) == []
+    hits = _search(universe, db, "table of contents", as_of=None)
+    assert not any("| 22 |" in h["text"] for h in hits)
     with sqlite3.connect(db) as conn:
         texts = [t for (t,) in conn.execute("SELECT text FROM chunks")]
     assert not any("| 22 |" in t for t in texts)  # TOC page numbers
@@ -73,7 +87,7 @@ def test_reindexing_replaces_chunks(universe, db):
     with sqlite3.connect(db) as conn:
         (total,) = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()
     assert first == second
-    assert total == sum(second.values())
+    assert total == sum(second.values()) == index.collection(db).count()
 
 
 def test_filing_without_sections_is_skipped_with_warning(universe, tmp_path, capsys):

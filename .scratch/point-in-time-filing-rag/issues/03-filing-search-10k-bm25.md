@@ -22,7 +22,7 @@
 
 **Done (2026-11-04).**
 - Chunks are stored in a SQLite `chunks` table, so the metadata and As-of filter is plain SQL and BM25 runs over whatever survives. Ticket 04 adds Chroma under the same chunk IDs.
-- Chunk size is counted in words: 600 words with 75 overlap, roughly 800 and 100 tokens.
+- Chunk size is counted in words: 600 words with 75 overlap, roughly 800 and 100 tokens. Ticket 04 later cut this to 300 words with 50 overlap, to fit the models' 512-token limit.
 - Only chunks that share a query term are returned. BM25 scores can be zero or negative for a real match when every filtered chunk contains the term, so the score can't be the cutoff.
 - In table markdown, EDGAR's separate `$`, `%` and `(` cells are merged into their numbers, and the header row is padded for the empty corner cell.
 - Checked on the five real AAPL 10-Ks (FY2022–FY2026): all six Sections found in each, with sensible sizes, starting text and table captions.
