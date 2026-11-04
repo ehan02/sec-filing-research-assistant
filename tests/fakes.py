@@ -1,4 +1,4 @@
-"""Offline EDGAR: a URL-routed fake HTTP client and a downloader wired to it."""
+"""Offline fakes: a URL-routed EDGAR HTTP client, a downloader wired to it, and a scripted chat model."""
 
 from __future__ import annotations
 
@@ -52,3 +52,15 @@ def make_downloader(data_dir: Path, fake: FakeEdgar,
     client = EdgarClient(user_agent=TEST_AGENT, min_interval=0)
     monkeypatch.setattr(client, "get", fake)
     return EdgarDownloader(client, data_dir=data_dir)
+
+
+class ScriptedChat:
+    """Returns the scripted answers in order and records what it was sent."""
+
+    def __init__(self, *answers: str) -> None:
+        self.answers = list(answers)
+        self.calls: list[tuple[str, list[dict]]] = []
+
+    def __call__(self, system: str, messages: list[dict]) -> str:
+        self.calls.append((system, [dict(m) for m in messages]))
+        return self.answers.pop(0)

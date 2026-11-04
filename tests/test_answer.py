@@ -7,21 +7,10 @@ import pytest
 from src.rag import index
 from src.rag.answer import ABSTAIN, MAX_ATTEMPTS, answer_question
 from tests import fixture_universe as fu
+from tests.fakes import ScriptedChat
 
 RISK_CITATION = f"FIXT 10-K FY2023 Item 1A, {fu.ACC_10K_2023}"
 QUESTION = "What export risks does Fixture Corp face?"
-
-
-class ScriptedChat:
-    """Returns the scripted answers in order and records what it was sent."""
-
-    def __init__(self, *answers: str) -> None:
-        self.answers = list(answers)
-        self.calls: list[tuple[str, list[dict]]] = []
-
-    def __call__(self, system: str, messages: list[dict]) -> str:
-        self.calls.append((system, [dict(m) for m in messages]))
-        return self.answers.pop(0)
 
 
 @pytest.fixture
