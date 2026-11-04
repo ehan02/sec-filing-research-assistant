@@ -18,10 +18,14 @@
 
 ## Comments
 
-**Done (2026-11-04); not yet run against a real model.**
+**Done (2026-11-04).**
 - **Injected model:** a plain function `chat(system, messages) -> str`, not a LangChain chat model, so tests pass a scripted function. `chat_model()` builds one from `DEFAULT_LLM`:
   - Ollama goes through `langchain-ollama`, at temperature 0.
   - Claude goes through the official `anthropic` SDK: `ANTHROPIC_MODEL`, default `claude-opus-5-5`, effort `medium`. Server-side refusal fallbacks (`fallbacks: "default"`) are on, and a final refusal becomes the Abstention sentence.
 - **Context:** each Chunk is a `<document citation="…">` inside `<documents>`, with its text HTML-escaped so filing text can't close the tags. The system prompt marks the documents as data, never instructions.
 - **Post-check:** every bracketed citation must match a retrieved Chunk's citation exactly, and an answer with no citations is rejected too. A failed answer is sent back with the problem named. After 3 attempts in total, the answer becomes the Abstention sentence. If nothing is retrieved, the result is an abstention without calling the model.
-- **Real-model check blocked by memory.** Ollama couldn't allocate a 650 MB buffer to load `llama3.2` while the embedder and reranker were loaded on this 7.7 GB machine. `qwen2.5:7b` (the `.env` default) isn't pulled, and `ANTHROPIC_API_KEY` is empty. Re-run with more free memory, or with a key.
+- **Real-model check, local `llama3.2` (3B) on real AAPL filings.** The first attempt failed when Ollama ran out of memory; it worked after other apps were closed. `qwen2.5:7b` (the `.env` default) isn't pulled, and Claude is untested because `ANTHROPIC_API_KEY` is empty.
+  - Single-source suppliers (latest 10-K as of 2025-06-30): passed on the 2nd attempt, after the post-check rejected the first. Cited `[AAPL 10-K FY2024 Item 8, 0000320193-24-000123]`, and the cited Chunk contains the quoted "custom components available from only one source" passage. The answer is mostly copied text. 94 s.
+  - Latest dividend: "$0.27 per share" `[AAPL 8-K Ex-99.1, 0000320193-26-000024]`, matching the release, on the 1st attempt. 61 s.
+  - FY2028 revenue guidance: returned the exact Abstention sentence. 46 s.
+  - The post-check proves each citation was retrieved, not that the claim comes from it; checking that is ticket 13's faithfulness score.
