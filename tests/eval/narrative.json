@@ -1,0 +1,211 @@
+{
+  "description": "Narrative retrieval set, scored by Recall@5 through filing_search. Each relevant item is a Filing, a Section and an evidence phrase: it counts as retrieved when a top-5 Chunk from that Filing and Section contains the phrase, so labels survive re-chunking. Filters are what the router would pass. README seed questions 1, 3, 4, 6 and 8 are adapted to AAPL, the only Company downloaded so far.",
+  "questions": [
+    {
+      "id": "suppliers-single-source",
+      "seed": 8,
+      "question": "Which components does Apple obtain from single or limited sources?",
+      "ticker": "AAPL",
+      "as_of": "2025-06-30",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-24-000123", "section": "Item 1", "phrase": "single or limited sources"},
+        {"accession_no": "0000320193-24-000123", "section": "Item 1A", "phrase": "single or limited sources"},
+        {"accession_no": "0000320193-24-000123", "section": "Item 8", "phrase": "single or limited sources"}
+      ]
+    },
+    {
+      "id": "customer-concentration",
+      "seed": 3,
+      "question": "Does any customer account for more than 10% of Apple's net sales or receivables?",
+      "ticker": "AAPL",
+      "as_of": "2023-06-30",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-22-000108", "section": "Item 8", "phrase": "more than 10%"}
+      ]
+    },
+    {
+      "id": "material-weakness-auditor",
+      "seed": 6,
+      "question": "Did Apple's auditor report a material weakness in internal control, and who is the auditor?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000026", "section": "Item 8", "phrase": "material weakness"},
+        {"accession_no": "0000320193-26-000026", "section": "Item 9A", "phrase": "Ernst & Young"}
+      ]
+    },
+    {
+      "id": "gross-margin-10qs",
+      "seed": 4,
+      "question": "How did Apple explain changes in its gross margin in its FY2026 quarterly reports?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-Q", "fiscal_year": 2026, "section": "Part I Item 2"},
+      "relevant": [
+        {"accession_no": "0000320193-26-000006", "section": "Part I Item 2", "phrase": "gross margin percentage"},
+        {"accession_no": "0000320193-26-000013", "section": "Part I Item 2", "phrase": "gross margin percentage"},
+        {"accession_no": "0000320193-26-000020", "section": "Part I Item 2", "phrase": "gross margin percentage"}
+      ]
+    },
+    {
+      "id": "tariffs-latest-10q",
+      "seed": 1,
+      "question": "What did Apple say about the impact of tariffs in its latest 10-Q?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-Q", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000020", "section": "Part I Item 2", "phrase": "tariff"}
+      ]
+    },
+    {
+      "id": "export-restrictions",
+      "question": "What risks does Apple describe from government restrictions on exporting its products or technology?",
+      "ticker": "AAPL",
+      "as_of": "2025-06-30",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-24-000123", "section": "Item 1A", "phrase": "export"}
+      ]
+    },
+    {
+      "id": "eu-platform-rules",
+      "question": "How do new European rules for large technology platforms affect Apple's App Store business?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000026", "section": "Item 1A", "phrase": "Digital Markets Act"}
+      ]
+    },
+    {
+      "id": "epic-litigation",
+      "question": "What is the status of Apple's legal dispute with Epic Games?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-Q", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000020", "section": "Part II Item 1", "phrase": "Epic"}
+      ]
+    },
+    {
+      "id": "state-aid-fy2024",
+      "question": "What did Apple disclose about the European Commission State Aid decision on its Irish taxes?",
+      "ticker": "AAPL",
+      "as_of": "2025-06-30",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-24-000123", "section": "Item 7", "phrase": "State Aid"},
+        {"accession_no": "0000320193-24-000123", "section": "Item 8", "phrase": "State Aid"}
+      ]
+    },
+    {
+      "id": "state-aid-as-of-2023",
+      "question": "What did Apple disclose about the European Commission State Aid decision on its Irish taxes?",
+      "ticker": "AAPL",
+      "as_of": "2023-06-30",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-22-000108", "section": "Item 8", "phrase": "State Aid"}
+      ]
+    },
+    {
+      "id": "headcount",
+      "question": "How many people does Apple employ?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000026", "section": "Item 1", "phrase": "full-time equivalent"}
+      ]
+    },
+    {
+      "id": "buybacks-latest-quarter",
+      "question": "How much stock did Apple buy back in its most recent quarter?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-Q", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000020", "section": "Part II Item 2", "phrase": "repurchase"},
+        {"accession_no": "0000320193-26-000020", "section": "Part I Item 2", "phrase": "repurchase"}
+      ]
+    },
+    {
+      "id": "dividend-latest-release",
+      "question": "What quarterly dividend did Apple's board declare in its latest earnings release?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "8-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000024", "section": "Ex-99.1", "phrase": "cash dividend"}
+      ]
+    },
+    {
+      "id": "effective-tax-rate",
+      "question": "What explains the change in Apple's effective tax rate?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000026", "section": "Item 7", "phrase": "effective tax rate"},
+        {"accession_no": "0000320193-26-000026", "section": "Item 8", "phrase": "effective tax rate"}
+      ]
+    },
+    {
+      "id": "fx-hedging",
+      "question": "How does Apple hedge its exposure to exchange rate movements?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000026", "section": "Item 7A", "phrase": "foreign currency"},
+        {"accession_no": "0000320193-26-000026", "section": "Item 8", "phrase": "foreign currency"}
+      ]
+    },
+    {
+      "id": "interest-rate-exposure",
+      "question": "How would rising interest rates affect Apple's investment portfolio and debt?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000026", "section": "Item 7A", "phrase": "interest rate risk"},
+        {"accession_no": "0000320193-26-000026", "section": "Item 8", "phrase": "interest rate risk"}
+      ]
+    },
+    {
+      "id": "apple-intelligence-fy2024",
+      "question": "What did Apple say about its generative AI features in its FY2024 annual report?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "fiscal_year": 2024},
+      "relevant": [
+        {"accession_no": "0000320193-24-000123", "section": "Item 7", "phrase": "Apple Intelligence"}
+      ]
+    },
+    {
+      "id": "global-minimum-tax",
+      "question": "What risks does the OECD global minimum tax pose for Apple?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-K", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000026", "section": "Item 1A", "phrase": "minimum tax"},
+        {"accession_no": "0000320193-26-000026", "section": "Item 8", "phrase": "minimum tax"}
+      ]
+    },
+    {
+      "id": "doj-antitrust",
+      "question": "What antitrust lawsuit has the US government brought against Apple?",
+      "ticker": "AAPL",
+      "as_of": "2026-11-04",
+      "filters": {"form": "10-Q", "latest": true},
+      "relevant": [
+        {"accession_no": "0000320193-26-000020", "section": "Part II Item 1", "phrase": "Department of Justice"}
+      ]
+    }
+  ]
+}

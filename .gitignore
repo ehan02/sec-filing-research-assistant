@@ -19,6 +19,7 @@ data/chroma/*
 !data/chroma/.gitkeep
 data/cache/
 data/*.db
+data/eval/
 data/*.parquet
 *.parquet
 
