@@ -2,7 +2,7 @@
 
 > Ask questions about 10-K, 10-Q and 8-K filings with cited answers and point-in-time filtering. Runs locally with Ollama, ChromaDB and LangGraph.
 
-**Status:** early build. The EDGAR downloader and its tests are implemented; everything else is a stub. See [Roadmap](#roadmap).
+**Status:** tickets 01–08 of 14 are done: downloader, point-in-time facts, hybrid `filing_search`, the narrative retrieval eval, `section_diff` and cited answers. Numeric answers, the router agent, batch features and the remaining evals are next. Tickets live in `.scratch/point-in-time-filing-rag/issues/`. See [Roadmap](#roadmap).
 
 **Docs:** domain terms are defined in [`GLOSSARY.md`](GLOSSARY.md), design decisions are in [`docs/adr/`](docs/adr/), and the full spec is [`.scratch/point-in-time-filing-rag/spec.md`](.scratch/point-in-time-filing-rag/spec.md).
 
@@ -57,7 +57,7 @@ A local, point-in-time research assistant over SEC filings with two modes:
 |---|---|
 | Language / models | Python 3.12, Pydantic |
 | Agent | LangGraph + LangChain |
-| LLM | Ollama (`qwen2.5:7b` or `llama3.1:8b`); Claude API for comparison |
+| LLM | Ollama (`llama3.2` by default; `qwen2.5:7b` if memory allows); Claude API for comparison |
 | Embeddings | sentence-transformers `BAAI/bge-base-en-v1.5` |
 | Re-ranker | `CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")`; `BAAI/bge-reranker-base` via `RERANK_MODEL` where memory allows |
 | Vector store | ChromaDB, collection `filings` |
@@ -257,7 +257,7 @@ sec-filing-research-assistant/
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-ollama pull qwen2.5:7b
+ollama pull llama3.2
 ```
 
 `.env`:

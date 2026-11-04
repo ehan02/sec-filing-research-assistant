@@ -1,0 +1,5 @@
+#!/bin/sh
+# Lint and test before every commit. Enable once per clone: git config core.hooksPath .githooks
+set -e
+.venv/Scripts/python.exe -m ruff check .
+.venv/Scripts/python.exe -m pytest -q

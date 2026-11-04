@@ -96,7 +96,7 @@ def chat_model(provider: str | None = None) -> ChatFn:
 
     if provider == "ollama":
         from langchain_ollama import ChatOllama
-        llm = ChatOllama(model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
+        llm = ChatOllama(model=os.getenv("OLLAMA_MODEL", "llama3.2"),
                          base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
                          temperature=0)
         return lambda system, messages: llm.invoke(

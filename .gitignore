@@ -28,3 +28,6 @@ data/*.parquet
 Thumbs.db
 .vscode/
 .idea/
+
+# Exported session transcripts
+session-*.txt

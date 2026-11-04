@@ -12,8 +12,10 @@ Default five-role vocabulary (needs-triage, needs-info, ready-for-agent, ready-f
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+## Running code
+
+Run Python as `.venv/Scripts/python.exe`; system Python lacks the dependencies. The pre-commit hook in `.githooks/` runs ruff and pytest.
+
 ## Coding style
-- Choose the simplest solution that works. No abstractions, helpers, classes, or new files for one-off operations.
-- Implement only what was asked. No extra features, config options, or defensive error handling for cases that can't happen.
-- Prefer the standard library and existing tools over custom scripts.
 - For non-trivial changes, state the approach in 1-2 sentences before writing code.
+- Review rules live in `CODING_STANDARDS.md`.

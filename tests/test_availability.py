@@ -10,8 +10,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from src.filings.availability import (EASTERN, is_available, normalize_as_of,
-                                      parse_acceptance)
+from src.filings.availability import EASTERN, is_available, normalize_as_of, parse_acceptance
 from tests import fixture_universe as fu
 
 
