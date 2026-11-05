@@ -31,3 +31,7 @@ Thumbs.db
 
 # Exported session transcripts
 session-*.txt
+
+# Lint cache, personal Claude Code settings
+.ruff_cache/
+.claude/settings.local.json
