@@ -1,5 +1,7 @@
 # SEC Filing Research Assistant
 
+[![CI](https://github.com/ehan02/sec-filing-research-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/ehan02/sec-filing-research-assistant/actions/workflows/ci.yml)
+
 A local research assistant for SEC 10-K, 10-Q and 8-K filings. It gives cited answers, filters strictly by point in time, and runs on your own machine with Ollama, ChromaDB and LangGraph.
 
 It answers questions like *"What did NVDA say about export restrictions in its latest 10-K, and how did that change from last year?"* and *"As of 2022-03-01, what was AAPL's latest reported revenue?"* Every claim in an answer cites the filing Section it came from, and every number traces back to an XBRL fact. No information is used before the moment it became public.
