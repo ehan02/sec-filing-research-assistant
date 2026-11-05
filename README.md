@@ -151,10 +151,6 @@ To lint and test before every commit, enable the hook once per clone: `git confi
 
 The feature job shows that the pipeline works. It is not evidence that the signal predicts returns.
 
-## Acknowledgements
-
-The design builds on Chapter 22 (RAG for Financial Research) of *Machine Learning for Trading*. It ports that chapter's hybrid retrieval, citation prompt and abstention pattern from LlamaIndex/OpenAI to LangChain/Ollama. New in this project: its own EDGAR downloader and Section parser, an XBRL facts database, 10-Q/8-K coverage, enforced as-of filtering across restatements, `section_diff`, the router, and batch feature extraction.
-
 ## License
 
 [MIT](LICENSE)
